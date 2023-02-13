@@ -113,37 +113,38 @@ class TaskWorker(threading.Thread):
                 roundTimer = time.time()
                 self.run_magneto_protocol()
                 
-                # Update Status
-                self.pcrClient.send_json({})
-                resp = self.pcrClient.recv_json()
-                
-                self.state = resp['state']
-                self.running = resp['running']
-                self.currentTemp = resp['temperature']
-                self.remainingTotalSec = resp['remainingTotalSec']
-                self.remainingGotoCount = resp['remainingGotoCount']
-                self.currentActionNumber = resp['currentActionNumber']
-                self.totalActionNumber = resp['totalActionNumber']
-                self.completePCR = resp['completePCR']
-                self.photodiodes = resp['photodiodes']
-                self.serialNumber = resp['serialNumber']
+                self._update_pcr_data()
 
-                if self.state == State.RUNNING:
-                    self.stateString = 'PCR in progress'
-                
-                # For History
-                if self.running:
-                    self.tempLogger.append(self.currentTemp)
+    def _update_pcr_data(self):
+        # Update Status
+        self.pcrClient.send_json({})
+        resp = self.pcrClient.recv_json()
+        
+        self.state = resp['state']
+        self.running = resp['running']
+        self.currentTemp = resp['temperature']
+        self.remainingTotalSec = resp['remainingTotalSec']
+        self.remainingGotoCount = resp['remainingGotoCount']
+        self.currentActionNumber = resp['currentActionNumber']
+        self.totalActionNumber = resp['totalActionNumber']
+        self.completePCR = resp['completePCR']
+        self.photodiodes = resp['photodiodes']
+        self.serialNumber = resp['serialNumber']
 
-                if self.completePCR:
-                    self.processCleanupPCR()
+        if self.state == State.RUNNING:
+            self.stateString = 'PCR in progress'
+        
+        # For History
+        if self.running:
+            self.tempLogger.append(self.currentTemp)
 
-
+        if self.completePCR:
+            self.processCleanupPCR()
 
     def run_magneto_protocol(self):
         if self.currentCommand == Command.MAGNETO:
             if len(self.magnetoProtocol) <= 0:
-                # TODO : finished magneto protocol
+                self._finish_magneto_protocol()
                 return 
 
             if self.magnetoIndex == -1:
@@ -163,7 +164,7 @@ class TaskWorker(threading.Thread):
                 self.running = True
                 self.magnetoRunning = False
 
-                self.startPCR()
+                self._finish_magneto_protocol()
             cmd = self.magnetoProtocol[self.magnetoIndex]
             magneto_command_handler.start_command(cmd)
             self.stateString = self._get_magneto_state()
@@ -224,11 +225,12 @@ class TaskWorker(threading.Thread):
     def _start(self):
         self.result = ['', '', '', '']
         self.resultCts = ['', '', '', '']
-
+        self.photodiodes = [[], [], [], []]
         self.startMagneto()
 
     def startMagneto(self):
-        pass
+        self.magnetoRunning = True
+        self.currentCommand = Command.MAGNETO
     
     def stopMagneto(self):
         pass

@@ -121,7 +121,7 @@ class Controller(threading.Thread):
 		self.filters = { filterString : { "use" : False, 'ct' : "", 'name' : "" } for idx, filterString in enumerate(['FAM', 'HEX', 'ROX', 'CY5'])}
 
 		# load recent protocol first
-		defaultProtocol = [{"label":"1", "temp":95.0, "time":5},{"label":"2", "temp":95.0, "time":5},{"label":"3", "temp":55.0, "time":5},{"label":"4", "temp":72.0, "time":5},{"label":"GOTO", "temp":2.0, "time":4},{"label":"5", "temp":72.0, "time":5}]
+		defaultProtocol = [{"label":"1", "temp":95, "time":5},{"label":"2", "temp":95, "time":5},{"label":"3", "temp":55, "time":5},{"label":"4", "temp":72, "time":5},{"label":"GOTO", "temp":2, "time":4},{"label":"5", "temp":72, "time":5}]
 		self.protocol = [Action(**action) for action in defaultProtocol]
 		self.protocolName = 'Default Protocol'
 
@@ -469,6 +469,7 @@ def command_handler(recv_data):
 			if recv_data['protocolData'] == None:
 				response['reason'] = 'protocol data is not valid'
 			else:
+				controller.photodiodes = [[], [], [], []]
 				controller.updateProtocol(recv_data['protocolData'])
 				controller.startPCR()
 				response['result'] = True

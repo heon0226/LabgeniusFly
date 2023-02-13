@@ -28,7 +28,7 @@ class Start(Resource):
 				'reason' : 'already started'
 			}
 		else:
-			task_worker.startPCR()
+			task_worker._start()
 			response = {
 				'result' : 'ok'
 			}
@@ -46,7 +46,7 @@ class Start(Resource):
 				'reason' : 'already started'
 			}
 		else:
-			task_worker.startPCR()
+			task_worker._start()
 			response = {
 				'result' : 'ok'
 			}
