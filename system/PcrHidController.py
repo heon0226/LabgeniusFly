@@ -299,7 +299,7 @@ class Controller(threading.Thread):
 				self.state  = rx.state
 				# self.chamber = rx.chamber 
 				self.currentTemp 	= rx.temperature
-				self.photodiodes 	= rx.photodiodes
+				self.photodiodes 	= rx.photodiode
 				self.requestData 	= rx.requestData
 				self.currentError 	= rx.currentError
 				self.targetArrival 	= rx.targetArrival
