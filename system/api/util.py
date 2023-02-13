@@ -31,7 +31,7 @@ def getRecentProtocol():
 	# defaultProtocol = [{"label":"1", "temp":95.0, "time":10},{"label":"2", "temp":95.0, "time":5},{"label":"SHOT", "temp":0.0, "time":0},{"label":"GOTO", "temp":2.0, "time":19},{"label":"5", "temp":72.0, "time":5}]
 	# print(defaultProtocol)
 	# defaultMagnetoProtocol = ["ready"]
-	defaultProtocol = [{"label":"1", "temp":95.0, "time":10},{"label":"2", "temp":95.0, "time":5},{"label":"3", "temp":55.0, "time":5},{"label":"4", "temp":72.0, "time":5},{"label":"GOTO", "temp":2.0, "time":4},{"label":"5", "temp":72.0, "time":5}]
+	defaultProtocol = [{"label":"1", "temp":95, "time":10},{"label":"2", "temp":95, "time":5},{"label":"3", "temp":55, "time":5},{"label":"4", "temp":72, "time":5},{"label":"GOTO", "temp":2, "time":4},{"label":"5", "temp":72, "time":5}]
 	defaultMagnetoProtocol = ["ready"]
 
 	filters = { 

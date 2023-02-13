@@ -32,4 +32,5 @@ if __name__ == '__main__':\
     app.register_blueprint(bp.bp_history, url_prefix='/api/history')
 
     # Magneto API
-    app.run(host=util.getIpAddress(), port=6009, debug=True, use_reloader=False)
+    # app.run(host=util.getIpAddress(), port=6009, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=6009, debug=True, use_reloader=False)
