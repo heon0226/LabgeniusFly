@@ -134,15 +134,15 @@ class Filter(L6470Stepper):
         self.set_register(l6470.KVAL_RUN, 90)
         self.set_register(l6470.KVAL_HOLD,20)
 
-#         self.set_register(l6470.KVAL_ACC, 120)
-#         self.set_register(l6470.KVAL_DEC, 120)
-#         self.set_register(l6470.KVAL_RUN, 120)
-#         self.set_register(l6470.KVAL_HOLD,20)
+        # self.set_register(l6470.KVAL_ACC, 120)
+        # self.set_register(l6470.KVAL_DEC, 120)
+        # self.set_register(l6470.KVAL_RUN, 120)
+        # self.set_register(l6470.KVAL_HOLD,20)
 
-#         self.set_register(l6470.KVAL_ACC, 200)
-#         self.set_register(l6470.KVAL_DEC, 200)
-#         self.set_register(l6470.KVAL_RUN, 200)
-#         self.set_register(l6470.KVAL_HOLD,20)
+        # self.set_register(l6470.KVAL_ACC, 200)
+        # self.set_register(l6470.KVAL_DEC, 200)
+        # self.set_register(l6470.KVAL_RUN, 200)
+        # self.set_register(l6470.KVAL_HOLD,20)
 
         self.go_until_speed = self.max_speed  # [deg/s]
         self.go_until_direction = l6470.FWD
