@@ -16,27 +16,7 @@ import json
 
 from api import util
 from UserDefs import State, Command, Action
-
-class State(IntEnum):
-    READY = 0x00,
-    RUNNING = 0x01,
-
-class Command(IntEnum):
-    READY = 0x00,
-    PCR_RUN = 0x01,
-    PCR_STOP = 0x02,
-    FAN_ON = 0x03,
-    FAN_OFF = 0x04,
-    MAGNETO = 0x05
-
-class Protocol():
-    def __init__(self, label, temp, time):
-        self.label = label
-        self.temp = temp
-        self.time = time
-
-    def toDict(self):
-        return {"label" : self.label, "temp" : self.temp, "time" : self.time}
+import magneto.command_handler.command_handler as magneto_command_handler
 
 # logger
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -52,12 +32,7 @@ logger.info("Logger started!")
 PCR_PORT = os.environ.get('PCR_PORT', '7001')
 MAGNETO_PORT = os.environ.get('MAGNETO_PORT', '7005')
 
-# test values
 MagnetoState = ["Washing 1...", "Washing 2...", "Elution...", "Lysis...", "Mixing..."]
-# Testphotodiode = [[392,392,386,380,379,379,377,377,375,374,373,373,371,370,369,362,365,367,365,367,370,367,370,367,374,383,392,423,474,559,673,803,933,1056,1161,1256,1338,1403,1454,1506],
-#                   [492,492,486,480,479,479,477,477,475,474,473,473,471,470,469,462,465,467,465,467,470,467,470,467,474,483,492,523,574,659,773,903,1033,1156,1261,1356,1438,1503,1554,1606],
-#                   [592,592,586,580,579,579,577,577,575,574,573,573,571,570,569,562,565,567,565,567,570,567,570,567,574,583,592,623,674,759,873,1003,1133,1256,1361,1456,1538,1603,1654,1706],
-#                   [692,692,686,680,679,679,677,677,675,674,673,673,671,670,669,662,665,667,665,667,670,667,670,667,674,683,692,723,774,859,973,1103,1233,1356,1461,1556,1638,1703,1754,1806]]
 
 # singletone pattern
 class TaskWorker(threading.Thread):
@@ -84,6 +59,9 @@ class TaskWorker(threading.Thread):
         self.pcrClient.connect('tcp://localhost:%s' % PCR_PORT)
         self.pcrMessage = { 'command' : 'none' }
 
+        self.magnetoClient = self.context.socket(zmq.REQ)
+        self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
+
         self.running = False
         self.currentCommand = Command.READY
         
@@ -104,7 +82,7 @@ class TaskWorker(threading.Thread):
         self.resultCts = ['', '', '', '']
 		
         # Magneto Params
-        self.magnetoIndex = 0
+        self.magnetoIndex = -1
         self.magnetoCounter = 0
         self.magnetoRunning = False
 
@@ -133,20 +111,7 @@ class TaskWorker(threading.Thread):
             currentTime = time.time()
             if currentTime - roundTimer >= 0.5: # 500ms timer
                 roundTimer = time.time()
-
-                if self.currentCommand == Command.MAGNETO:
-                    self.stateString = MagnetoState[self.magnetoIndex]
-                    self.magnetoCounter += 1
-
-                    if self.magnetoCounter == 3:
-                        self.magnetoCounter = 0
-                        self.magnetoIndex += 1
-
-                        if self.magnetoIndex == len(MagnetoState):
-                            self.running = True
-                            self.magnetoRunning = False
-
-                            self.startPCR()
+                self.run_magneto_protocol()
                 
                 # Update Status
                 self.pcrClient.send_json({})
@@ -173,7 +138,59 @@ class TaskWorker(threading.Thread):
                 if self.completePCR:
                     self.processCleanupPCR()
 
-            
+
+
+    def run_magneto_protocol(self):
+        if self.currentCommand == Command.MAGNETO:
+            if len(self.magnetoProtocol) <= 0:
+                # TODO : finished magneto protocol
+                return 
+
+            if self.magnetoIndex == -1:
+                self.magnetoIndex = 0
+                cmd = self.magnetoProtocol[self.magnetoIndex]
+                magneto_command_handler.start_command(cmd)
+                self.stateString = self._get_magneto_state()
+                return
+            cmd = self.magnetoProtocol[self.magnetoIndex]
+            if magneto_command_handler.wait_command(cmd):
+                self.stateString = self._get_magneto_state()
+                return 
+            self.magnetoIndex +=1
+
+            # Magneto Protocol is finished
+            if self.magnetoIndex == len(MagnetoState):
+                self.running = True
+                self.magnetoRunning = False
+
+                self.startPCR()
+            cmd = self.magnetoProtocol[self.magnetoIndex]
+            magneto_command_handler.start_command(cmd)
+            self.stateString = self._get_magneto_state()
+            print(f'start_command{cmd}')
+
+    def _finish_magneto_protocol(self):
+        self.running = True
+        self.magnetoRunning = False
+        self.currentCommand = Command.PCR_RUN
+        self.startTime = datetime.datetime.now()
+        self.stateString = 'PCR in progress'
+
+        protocol = list(map(lambda x : x.__dict__, self.protocol))
+        protocolData = [self.protocolName, self.filters, protocol]
+        message = { 'command' : 'start', 'protocolData' : protocolData }
+
+        self.pcrClient.send_json(message)
+        response = self.pcrClient.recv_json()
+    
+    def _get_magneto_state(self):
+        print_message = magneto_command_handler.get_print_message()
+        line_no = self.magnetoIndex + 1
+        total_lines = len(self.magnetoProtocol)
+        cmd = self.magnetoProtocol[self.magnetoIndex]
+        dir = magneto_command_handler.dir_command(cmd)
+        return f'{print_message} ({line_no}/{total_lines}, {dir})'
+
     def initValues(self):
         self.running = False
         self.currentCommand = Command.READY
@@ -183,7 +200,7 @@ class TaskWorker(threading.Thread):
         self.serialNumber = ''
 
         # Magneto Params
-        self.magnetoIndex = 0
+        self.magnetoIndex = -1
         self.magnetoCounter = 0
         self.magnetoRunning = False
 
@@ -203,6 +220,12 @@ class TaskWorker(threading.Thread):
             self.protocol.append(Action(**action))
         
         self.magnetoProtocol = protocolData[3]
+
+    def _start(self):
+        self.result = ['', '', '', '']
+        self.resultCts = ['', '', '', '']
+
+        self.startMagneto()
 
     def startMagneto(self):
         pass
