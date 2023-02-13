@@ -299,7 +299,7 @@ class Controller(threading.Thread):
 				self.state  = rx.state
 				# self.chamber = rx.chamber 
 				self.currentTemp 	= rx.temperature
-				self.photodiodes 	= rx.photodiode
+				self.currentPhotodiode 	= rx.photodiode
 				self.requestData 	= rx.requestData
 				self.currentError 	= rx.currentError
 				self.targetArrival 	= rx.targetArrival
@@ -369,7 +369,7 @@ class Controller(threading.Thread):
 								self.isFilterActionFinished = not self.filter.wait()
 								
 								if self.isFilterActionFinished:
-									self.currentPhotodiode = self.photodiodes
+									photodiode = self.currentPhotodiode
 
 									# turn on the led, save the result and turn off the led.
 									self.leds[self.filterIndex] = 0
@@ -377,7 +377,7 @@ class Controller(threading.Thread):
 									self.shotCounter += 1
 									if self.shotCounter >= 2:
 										# save the filter data
-										self.photodiodes[self.filterIndex].append(self.currentPhotodiode)
+										self.photodiodes[self.filterIndex].append(photodiode)
 										logger.info(f'{self.currentCycle} Save the filter data - {self.filterIndex} : {self.currentPhotodiode}')
 										
 										# led turn off
