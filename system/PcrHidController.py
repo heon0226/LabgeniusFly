@@ -199,7 +199,7 @@ class Controller(threading.Thread):
 				if gotoIdx != -1:
 					tempTime = 0
 					for i in range(gotoIdx, idx):
-						tempTime += self.protocol[i].time
+						tempTime += int(self.protocol[i].time)
 					tempTime *= action.time
 					self.leftTotalSec += tempTime
 			elif action.label != 'SHOT':
