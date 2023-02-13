@@ -157,10 +157,10 @@ class TaskWorker(threading.Thread):
             if magneto_command_handler.wait_command(cmd):
                 self.stateString = self._get_magneto_state()
                 return 
-            self.magnetoIndex +=1
+            self.magnetoIndex += 1
 
             # Magneto Protocol is finished
-            if self.magnetoIndex == len(MagnetoState):
+            if self.magnetoIndex >= len(self.magnetoProtocol):
                 self.running = True
                 self.magnetoRunning = False
 
