@@ -261,29 +261,29 @@ class Controller(threading.Thread):
 				usbTimer = time.time()
 
 				# Update tx buffer params
-				with self.txBuffer as tx:
-					tx.cmd 					= self.currentCommand
-					tx.currentTargetTemp 	= self.currentTargetTemp
-					
-					tx.startTemp  			= self.pid['start_temp']
-					tx.targetTemp 			= self.pid['target_temp']
-					tx.Kp 					= self.pid['Kp']
-					tx.Ki 					= self.pid['Ki']
-					tx.Kd 					= self.pid['Kd']
+				tx = self.txBuffer
+				tx.cmd 					= self.currentCommand
+				tx.currentTargetTemp 	= self.currentTargetTemp
+				
+				tx.startTemp  			= self.pid['start_temp']
+				tx.targetTemp 			= self.pid['target_temp']
+				tx.Kp 					= self.pid['Kp']
+				tx.Ki 					= self.pid['Ki']
+				tx.Kd 					= self.pid['Kd']
 
-					tx.ledControl			= True
-					tx.led_wg				= self.leds[0]
-					tx.led_r				= self.leds[1]
-					tx.led_g				= self.leds[2]
-					tx.led_b				= self.leds[3]
+				tx.ledControl			= True
+				tx.led_wg				= self.leds[0]
+				tx.led_r				= self.leds[1]
+				tx.led_g				= self.leds[2]
+				tx.led_b				= self.leds[3]
 
-					tx.led_wg_pwm			= self.leds_pwm[0]
-					tx.led_r_pwm			= self.leds_pwm[1]
-					tx.led_g_pwm			= self.leds_pwm[2]
-					tx.led_b_pwm			= self.leds_pwm[3]
+				tx.led_wg_pwm			= self.leds_pwm[0]
+				tx.led_r_pwm			= self.leds_pwm[1]
+				tx.led_g_pwm			= self.leds_pwm[2]
+				tx.led_b_pwm			= self.leds_pwm[3]
 
-					tx.compensation 		= self.compensation
-					tx.currentCycle 		= self.currentCycle
+				tx.compensation 		= self.compensation
+				tx.currentCycle 		= self.currentCycle
 
 				# Write tx buffer (65 bytes)
 				self.device.write(self.txBuffer.toBytes())
@@ -295,14 +295,14 @@ class Controller(threading.Thread):
 				self.rxBuffer.setParams(ReceivedDataBuffer)
 
 				# Update rx buffer params
-				with self.rxBuffer as rx:
-					self.state  = rx.state
-					# self.chamber = rx.chamber 
-					self.currentTemp 	= rx.temperature
-					self.photodiodes 	= rx.photodiodes
-					self.requestData 	= rx.requestData
-					self.currentError 	= rx.currentError
-					self.targetArrival 	= rx.targetArrival
+				rx = self.rxBuffer
+				self.state  = rx.state
+				# self.chamber = rx.chamber 
+				self.currentTemp 	= rx.temperature
+				self.photodiodes 	= rx.photodiodes
+				self.requestData 	= rx.requestData
+				self.currentError 	= rx.currentError
+				self.targetArrival 	= rx.targetArrival
 
 			# Real-time PCR Task (100 millesecond timer)
 			if currentTime - roundTimer >= 1:
