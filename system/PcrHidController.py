@@ -105,10 +105,6 @@ class Controller(threading.Thread):
 		self.filter = Filter(self.spi)
 		time.sleep(1)
 
-		self.filter.go_home() # Go Home
-		while self.filter.wait(): # Wait Go to Home
-			time.sleep(0.01)
-
 		self.positions = [0.0, 90.0, 180.0, 270.0]
 		self.shotCounter = 0
 		self.currentCycle = 0
