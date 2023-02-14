@@ -16,9 +16,9 @@ from datetime import datetime, timedelta
 from enum import IntEnum
 from UserDefs import *
 
-import smbus
-from magneto.actuators.l6470_sc18is602b_interface import L6470Sc18is602bInterface
+from magneto.actuators.tmc5130_spi_interface import TMC5130SpiInterface
 from magneto.actuators.filter import Filter
+
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -101,11 +101,9 @@ class Controller(threading.Thread):
 		self.photodiodes = [[], [], [], []]		# photodiodes values to List
 
 		# for filter 
-		self.i2c = smbus.SMBus(1)
-		time.sleep(1)
-		self.i2c_address = (0b0101000 | 0b010) # JP8 on HAT board
-		self.spi = L6470Sc18is602bInterface(self.i2c, self.i2c_address)
+		self.spi = TMC5130SpiInterface(bus=0, device=2, mode=3)
 		self.filter = Filter(self.spi)
+		time.sleep(1)
 
 		self.filter.go_home() # Go Home
 		while self.filter.wait(): # Wait Go to Home
@@ -124,13 +122,6 @@ class Controller(threading.Thread):
 		defaultProtocol = [{"label":"1", "temp":95, "time":5},{"label":"2", "temp":95, "time":5},{"label":"3", "temp":55, "time":5},{"label":"4", "temp":72, "time":5},{"label":"GOTO", "temp":2, "time":4},{"label":"5", "temp":72, "time":5}]
 		self.protocol = [Action(**action) for action in defaultProtocol]
 		self.protocolName = 'Default Protocol'
-
-
-		# TEST : filter params 
-		self.currentPos = self.filter.get_pos()
-		self.currentSpeed = self.filter.get_speed()
-		self.currentAcc = self.filter.get_acc()
-		
 
 	def initValues(self):
 		self.currentCommand = Command.READY
@@ -315,10 +306,6 @@ class Controller(threading.Thread):
 			if currentTime - roundTimer >= 1:
 				# reset the timer 
 				roundTimer = time.time()
-				# TEST : update filter params 
-				self.currentPos = self.filter.get_pos()
-				self.currentSpeed = self.filter.get_speed()
-				self.currentAcc = self.filter.get_acc()
 
 				if self.running:
 					self.elapsedTime = self._calc_elapsed_time()
