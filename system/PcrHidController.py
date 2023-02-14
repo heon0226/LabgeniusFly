@@ -16,9 +16,6 @@ from datetime import datetime, timedelta
 from enum import IntEnum
 from UserDefs import *
 
-import smbus
-from magneto.actuators.l6470_sc18is602b_interface import L6470Sc18is602bInterface
-from magneto.actuators.filter import Filter
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -101,15 +98,7 @@ class Controller(threading.Thread):
 		self.photodiodes = [[], [], [], []]		# photodiodes values to List
 
 		# for filter 
-		self.i2c = smbus.SMBus(1)
-		time.sleep(1)
-		self.i2c_address = (0b0101000 | 0b010) # JP8 on HAT board
-		self.spi = L6470Sc18is602bInterface(self.i2c, self.i2c_address)
-		self.filter = Filter(self.spi)
 
-		self.filter.go_home() # Go Home
-		while self.filter.wait(): # Wait Go to Home
-			time.sleep(0.01)
 
 		self.positions = [0.0, 90.0, 180.0, 270.0]
 		self.shotCounter = 0
@@ -126,11 +115,6 @@ class Controller(threading.Thread):
 		self.protocolName = 'Default Protocol'
 
 
-		# TEST : filter params 
-		self.currentPos = self.filter.get_pos()
-		self.currentSpeed = self.filter.get_speed()
-		self.currentAcc = self.filter.get_acc()
-		
 
 	def initValues(self):
 		self.currentCommand = Command.READY
@@ -315,10 +299,6 @@ class Controller(threading.Thread):
 			if currentTime - roundTimer >= 1:
 				# reset the timer 
 				roundTimer = time.time()
-				# TEST : update filter params 
-				self.currentPos = self.filter.get_pos()
-				self.currentSpeed = self.filter.get_speed()
-				self.currentAcc = self.filter.get_acc()
 
 				if self.running:
 					self.elapsedTime = self._calc_elapsed_time()
@@ -370,7 +350,7 @@ class Controller(threading.Thread):
 							# Run the filter
 							elif self.filterRunning:
 								# isFilterActionFinished : motor moving is done.
-								self.isFilterActionFinished = not self.filter.wait()
+								self.isFilterActionFinished = False
 								
 								if self.isFilterActionFinished:
 									photodiode = self.currentPhotodiode
@@ -393,7 +373,6 @@ class Controller(threading.Thread):
 										self.filterRunning = False
 							else:
 								self.filterRunning = True
-								self.filter.position(self.positions[self.filterIndex]) 
 							self.currentActionNumber -= 1
 
 						else: 
