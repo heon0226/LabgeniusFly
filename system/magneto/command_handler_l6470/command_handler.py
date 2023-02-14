@@ -201,17 +201,13 @@ def is_stop_command(command):
 
 
 def stop():
-  # chamber.soft_stop()
-  # syringe.soft_stop()
-  # filter.soft_stop()
-  # chamber.clear_status()
-  # syringe.clear_status()
-  # filter.clear_status()
-  # magnet.stop()
-  chamber.stop()
-  syringe.stop()
-  filter.stop()
-  magnet.stop()
+    chamber.soft_stop()
+    syringe.soft_stop()
+    filter.soft_stop()
+    chamber.clear_status()
+    syringe.clear_status()
+    filter.clear_status()
+    magnet.stop()
 
 
 def is_get_status_command(command):

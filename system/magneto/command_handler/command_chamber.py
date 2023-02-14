@@ -6,9 +6,12 @@ from magneto.actuators.hardware_config import chamber
 
 # chamber home internal command list
 _home_command_list = [
-    # 'chamber goto_home',
-    'chamber sync_with_encoder_position',
-    'chamber goto_home',
+  'chamber search_encoder_n_signal',
+  'chamber go_to_encoder_n_signal',
+  'chamber go_to_offset_position',
+  'chamber set_home_position',
+  'chamber shift_from_home',
+  'chamber finish_home'
 ]
 _home_command_list_index = -1
 
@@ -50,122 +53,157 @@ def _stop_chamber_home():
 
 
 def check(command):
-    # check action is given
-    command = command.split()
-    if len(command) < 2:
-        return False, f'chamber action is required.', None
+  # check action is given
+  command = command.split()
+  if len(command) < 2:
+    return False, f'chamber action is required.', None
 
-    # check each action
-    action = command[1]
-    if action == 'home':
-        return True, None, None
-    if action == 'goto':
-        if len(command) < 3:
-            return False, f'chamber goto no is required.', None
-        no = command[2]
-        try:
-            no = int(no)
-        except ValueError:
-            return False, f'chamber no ({no}) must be integer.', None
-        if no < chamber.get_min_chamber_no() or no > chamber.get_max_chamber_no():
-            return False, f'chamber number ({no}) is out of range', None
-        return True, None, None
-    if action == 'position':
-        if len(command) < 3:
-            return False, f'chamber position is required.', None
-        position = command[2]
-        try:
-            position = float(position)
-        except ValueError:
-            return False, f'chamber position ({position}) must be integer or float.', None
-        if position < 0:
-            return False, f'chamber position must be positive.', None
-        return True, None, None
-    if action == 'jog':    # [0]chamber [1]jog [2]+/- [3]shift (optional)
-        if len(command) < 3:
-            return False, f'chamber jog direction required', None
-        direction = command[2]
-        directions = ['+', '-']
-        if not direction in directions:
-            return False, f'chamber direction ({direction}) not correct', None
-        if len(command) >= 4:    # check jog shift
-            shift = command[3]
-            try:
-                shift = float(shift)
-            except ValueError:
-                return False, f'chamber jog shift  ({shift}) must be integer or float.', None
-        return True, None, None
-    if action == 'get_position':
-        return True, None, None
-    if action == 'set_encoder_zero_position':
-        return True, None, None
-    if action == 'sync_with_encoder_position':
-        return True, None, None
-    if action == 'goto_home':
-        return True, None, None
-    print('internal error - invalid action ({action}) in check_chamber()')
-    return False, f'invalid chamber action ({action})', None
+  # check each action
+  action = command[1]
+  if action == 'home':
+      return True, None, None
+  if action == 'goto':
+    if len(command) < 3:
+      return False, f'chamber goto no is required.', None
+    no = command[2]
+    try:
+      no = int(no)
+    except ValueError:
+      return False, f'chamber no ({no}) must be integer.', None
+    if no < chamber.get_min_chamber_no() or no > chamber.get_max_chamber_no():
+      return False, f'chamber number ({no}) is out of range', None
+    return True, None, None
+  if action == 'position':
+    if len(command) < 3:
+      return False, f'chamber position is required.', None
+    position = command[2]
+    try:
+      position = float(position)
+    except ValueError:
+      return False, f'chamber position ({position}) must be integer or float.', None
+    # if position < 0:
+    #   return False, f'chamber position must be positive.', None
+    return True, None, None
+  if action == 'jog':    # [0]chamber [1]jog [2]+/- [3]shift (optional)
+    if len(command) < 3:
+        return False, f'chamber jog direction required', None
+    direction = command[2]
+    directions = ['+', '-']
+    if not direction in directions:
+        return False, f'chamber direction ({direction}) not correct', None
+    if len(command) >= 4:    # check jog shift
+      shift = command[3]
+      try:
+        shift = float(shift)
+      except ValueError:
+        return False, f'chamber jog shift  ({shift}) must be integer or float.', None
+    return True, None, None
+  if action == 'get_position':
+      return True, None, None
+  if action == 'set_encoder_zero_position':
+      return True, None, None
+  if action == 'sync_with_encoder_position':
+      return True, None, None
+  if action == 'goto_home':
+      return True, None, None
+  if action == 'search_encoder_n_signal':
+      return True, None, None
+  if action == 'go_to_encoder_n_signal':
+      return True, None, None
+  if action == 'go_to_offset_position':
+      return True, None, None
+  if action == 'set_home_position':
+      return True, None, None
+  if action == 'shift_from_home':
+      return True, None, None
+  if action == 'finish_home':
+      return True, None, None
+  if action == 'save_offset_position':
+      return True, None, None
+  print(f'internal error - invalid action ({action}) in check_chamber()')
+  return False, f'invalid chamber action ({action})', None
 
 
 
 def start(command):
-    command = command.split()
-    action = command[1]
-    if action == 'home':
-        _start_chamber_home()
-        return (True, None, None)
-    if action == 'goto':
-        no = command[2]
-        no = int(no)
-        chamber.goto(no)
-        return (True, None, None)
-    if action == 'position':
-        position = command[2]
-        position = float(position)
-        chamber.position(position)
-        return (True, None, None)
-    if action == 'jog':
-        direction = command[2]
-        shift = None
-        if len(command) == 4:  # has jog shift
-            shift = command[3]
-            shift = float(shift)
-        chamber.jog(direction, shift)
-        return (True, None, None)
-    if action == 'get_position':
-        driver_pos = chamber.get_pos()
-        end_pos = chamber.get_enc_pos()
-        return (True, None, {'driver_pos': driver_pos, 'enc_pos': end_pos})
-    if action == 'set_encoder_zero_position':
-        chamber.set_encoder_zero_position()
-        chamber.set_pos(0)
-        return (True, None, None)
-    if action == 'sync_with_encoder_position':
-        chamber.sync_with_encoder_position()
-        return (True, None, None)
-    if action == 'goto_home':
-        chamber.goto_home()
-        return (True, None, None)
-    print('internal error - invalid action ({action}) in start_chamber()')
-    return (False, 'internal error - invalid action ({action}) in start_chamber()', None)
+  command = command.split()
+  action = command[1]
+  if action == 'home':
+    _start_chamber_home()
+    return (True, None, None)
+  if action == 'goto':
+    no = command[2]
+    no = int(no)
+    chamber.goto(no)
+    return (True, None, None)
+  if action == 'position':
+    position = command[2]
+    position = float(position)
+    chamber.position(position)
+    return (True, None, None)
+  if action == 'jog':
+    direction = command[2]
+    shift = None
+    if len(command) == 4:  # has jog shift
+      shift = command[3]
+      shift = float(shift)
+      chamber.jog(direction, shift)
+      return (True, None, None)
+  if action == 'get_position':
+    driver_pos = chamber.get_pos()
+    end_pos = chamber.get_enc_pos()
+    return (True, None, {'driver_pos': driver_pos, 'enc_pos': end_pos})
+  if action == 'set_encoder_zero_position':
+    chamber.set_encoder_zero_position()
+    chamber.set_pos(0)
+    return (True, None, None)
+  if action == 'sync_with_encoder_position':
+    chamber.sync_with_encoder_position()
+    return (True, None, None)
+  if action == 'goto_home':
+    chamber.goto_home()
+    return (True, None, None)
+  if action == 'search_encoder_n_signal':
+    chamber.search_encoder_n_signal()
+    return (True, None, None)
+  if action == 'go_to_encoder_n_signal':
+    chamber.go_to_encoder_n_signal()
+    return (True, None, None)
+  if action == 'go_to_offset_position':
+    chamber.go_to_offset_position()
+    return (True, None, None)
+  if action == 'set_home_position':
+    chamber.set_home_position()
+    return (True, None, None)
+  if action == 'shift_from_home':
+    chamber.shift_from_home()
+    return (True, None, None)
+  if action == 'finish_home':
+    chamber.finish_home()
+    return (True, None, None)
+  if action == 'save_offset_position':
+    chamber.save_offset_position()
+    return (True, None, None)
+  print(f'internal error - invalid action ({action}) in start_chamber()')
+  return (False, 'internal error - invalid action ({action}) in start_chamber()', None)
 
 
 def wait(command):
-    command = command.split()
-    action = command[1]
-    if action == 'home':
-        return _wait_chamber_home()
-    else:
-        return chamber.wait()
+  command = command.split()
+  action = command[1]
+  if action == 'home':
+    return _wait_chamber_home()
+  else:
+    return chamber.wait()
 
 
 def stop(command):
-    command = command.split()
-    action = command[1]
-    if action == 'home':
-        return _stop_chamber_home()
-    else:
-        chamber.stop()
-    return (True, None, None)
+  command = command.split()
+  action = command[1]
+  if action == 'home':
+    return _stop_chamber_home()
+  else:
+    chamber.stop()
+  return (True, None, None)
 
 # command_chamber.py

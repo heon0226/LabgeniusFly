@@ -2,7 +2,7 @@
 ###############################################################################
 # command_magnet_status.py
 ###############################################################################
-# import magneto.actuators.l6470 as l6470
+import magneto.actuators.l6470 as l6470
 from magneto.actuators.hardware_config import magnet
 
 

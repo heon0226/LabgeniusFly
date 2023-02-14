@@ -2,8 +2,7 @@
 ###############################################################################
 # command_registers.py
 ###############################################################################
-# import magneto.actuators.tmc5130 as tmc5130
-import magneto.actuators.tmc5130 as tmc5130
+import magneto.actuators.l6470 as l6470
 from magneto.actuators.hardware_config import (chamber, syringe, filter)
 
 
@@ -21,7 +20,7 @@ def check_set_register(command):
     if len(command) < 3:
         return False, f'register is required.', None
     register = command[2]
-    register = tmc5130.name_to_no(register)
+    register = l6470.name_to_no(register)
     if register == None:
         return False, f'set_register register "{register}" not correct'
 
@@ -41,7 +40,7 @@ def start_set_register(command):
     command = command.split()
     actuator = command[1]
     register = command[2]
-    register = tmc5130.name_to_no(register)
+    register = l6470.name_to_no(register)
     value = command[3]
     value = int(value, base=0) # base guessing
     if actuator =='chamber':

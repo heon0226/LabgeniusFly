@@ -34,8 +34,8 @@ class MagnetoTask(threading.Thread):
                         self.running = wait_command(self.current_command)
                         if not self.running:
                             self.current_command = ''
-                syringe.update_encoder_multi_turn()
-                chamber.update_encoder_multi_turn()
+                # syringe.update_encoder_multi_turn()
+                # chamber.update_encoder_multi_turn()
                 # time.sleep(0.05)  # 50 millesecond but almost take 100ms
                 # time.sleep(0.02)  # 50 millesecond but almost take 40ms ?
                 # time.sleep(0.01)  # 50 millesecond but almost take 20ms ?
@@ -51,6 +51,7 @@ class MagnetoTask(threading.Thread):
             if is_get_status_command(command):
                 return self._get_status()
             # check command
+            print(command)
             (result, reason, data) = check_command(command)
             if result == False:
                 return (result, reason, data)

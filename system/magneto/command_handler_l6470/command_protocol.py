@@ -32,7 +32,6 @@ def check(command):
     for i in range(0, len(lines)):
         line = lines[i]
         line = line.strip()
-        if line == '': continue
         command = line.split()
         cmd = command[0]
         if cmd == 'home':

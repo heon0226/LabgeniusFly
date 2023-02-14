@@ -32,18 +32,24 @@ class Magnet:
         self.pwm.set_servo_pulsewidth(pin, 0)  # pulse off
         self.bcm_pin = pin  # pigpio, Physical pin 12 _ BCM 18 (PWM0)
         self.min_position = 0  # mm
-        self.max_position = 30  # mm, L12-30-XX-6-R
+        # self.max_position = 30  # mm, L12-30-XX-6-R
+        self.max_position = 50  # mm
         self.min_pulse = 1000  # us, 50Hz
         self.max_pulse = 2000  # us, 50Hz
+        # max speed is 44 mm / 3.5 s = 13.3 mm /s
         # self.speed = 100/15  # 100 mm / 15 s
-        self.speed = 30/10  # 30 mm / 10 s
+        # self.speed = 30/10  # 30 mm / 10 s
+        # self.speed = 50/10  # 50 mm / 10 s
+        # self.speed = 50/2  # mm/s, too fast
+        self.speed = 10.0  # mm/s, too fast
 
         self.current_position = 0  # mm
         self.target_position = self.current_position  # mm
         self.last_time = time.time()
         self.off_position = 0  # mm
         # self.on_position = 20  # mm
-        self.on_position = 20  # mm
+        # self.on_position = 20  # mm
+        self.on_position = 44  # mm
 
         self.home_position = self.current_position  # mm
         # self.jog_shift = 10.0  # mm
@@ -103,15 +109,17 @@ class Magnet:
         self.current_position = next_position
         # set waiting return flag
         waiting = True  # keep waiting
-        # print('magnet.waiting')
-        # print(self.direction, next_position, self.target_position)
         if self.direction == '+':
             if next_position >= self.target_position:
+                self.direction = ''
                 waiting = False
         else:
             if next_position <= self.target_position:
+                self.direction = ''
                 waiting = False  # finished
         # output pwm
+        print('magnet.waiting')
+        print(self.direction, next_position, self.target_position, waiting)
         pulse_width = self._mm_to_pulsewidth(self.current_position)
         self.pwm.set_servo_pulsewidth(self.bcm_pin, pulse_width)
         # return
