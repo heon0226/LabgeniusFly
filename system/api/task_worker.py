@@ -59,8 +59,8 @@ class TaskWorker(threading.Thread):
         self.pcrClient.connect('tcp://localhost:%s' % PCR_PORT)
         self.pcrMessage = { 'command' : 'none' }
 
-        self.magnetoClient = self.context.socket(zmq.REQ)
-        self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
+        # self.magnetoClient = self.context.socket(zmq.REQ)
+        # self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
 
         self.running = False
         self.currentCommand = Command.READY
@@ -102,7 +102,6 @@ class TaskWorker(threading.Thread):
             self.protocol.append(Action(**action))
         
         self.magnetoProtocol = protocolData[3]
-        # self.magnetoProtocol = protocolData[5]
         
     # For getting the device status
     def run(self):
@@ -119,7 +118,7 @@ class TaskWorker(threading.Thread):
         # Update Status
         self.pcrClient.send_json({})
         resp = self.pcrClient.recv_json()
-        
+
         self.state = resp['state']
         self.running = resp['running']
         self.currentTemp = resp['temperature']
@@ -130,16 +129,10 @@ class TaskWorker(threading.Thread):
         self.completePCR = resp['completePCR']
         self.photodiodes = resp['photodiodes']
         self.serialNumber = resp['serialNumber']
-
-        if self.state == State.RUNNING:
-            self.stateString = 'PCR in progress'
         
         # For History
         if self.running:
             self.tempLogger.append(self.currentTemp)
-
-        if self.completePCR:
-            self.processCleanupPCR()
 
     def run_magneto_protocol(self):
         if self.currentCommand == Command.MAGNETO:
