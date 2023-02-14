@@ -203,7 +203,7 @@ class Controller(threading.Thread):
 					tempTime *= action.time
 					self.leftTotalSec += tempTime
 			elif action.label != 'SHOT':
-				self.leftTotalSec += action.time
+				self.leftTotalSec += int(action.time)
 
 	def _calc_elapsed_time(self):
 		elapsedTimeSec = (datetime.now() - self.startTime).total_seconds()
