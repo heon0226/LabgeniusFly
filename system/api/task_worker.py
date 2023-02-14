@@ -159,8 +159,9 @@ class TaskWorker(threading.Thread):
 
                 self._finish_magneto_protocol()
             cmd = self.magnetoProtocol[self.magnetoIndex]
+            if len(cmd) != 0:
+                magneto_command_handler.start_command(cmd)
             logger.info(f'index : {self.magnetoIndex}, cmd : {cmd}')
-            magneto_command_handler.start_command(cmd)
             self.stateString = self._get_magneto_state()
             print(f'start_command{cmd}')
 
