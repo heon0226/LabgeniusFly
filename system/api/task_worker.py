@@ -139,17 +139,20 @@ class TaskWorker(threading.Thread):
             if len(self.magnetoProtocol) <= 0:
                 self._finish_magneto_protocol()
                 return 
-
+            
             if self.magnetoIndex == -1:
                 self.magnetoIndex = 0
-                cmd = self.magnetoProtocol[self.magnetoIndex]
-                magneto_command_handler.start_command(cmd)
-                self.stateString = self._get_magneto_state()
+                if len(cmd) != 0:
+                    cmd = self.magnetoProtocol[self.magnetoIndex]
+                    magneto_command_handler.start_command(cmd)
+                    self.stateString = self._get_magneto_state()
                 return
+            
             cmd = self.magnetoProtocol[self.magnetoIndex]
-            if magneto_command_handler.wait_command(cmd):
-                self.stateString = self._get_magneto_state()
-                return 
+            if len(cmd) != 0:
+                if magneto_command_handler.wait_command(cmd):
+                    self.stateString = self._get_magneto_state()
+                    return 
             self.magnetoIndex += 1
 
             # Magneto Protocol is finished
@@ -240,7 +243,6 @@ class TaskWorker(threading.Thread):
         protocolData = [self.protocolName, self.filters, protocol]
         message = { 'command' : 'start', 'protocolData' : protocolData }
 
-        print(protocolData)
         self.pcrClient.send_json(message)
         response = self.pcrClient.recv_json()
 
