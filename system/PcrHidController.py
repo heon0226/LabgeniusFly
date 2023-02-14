@@ -205,6 +205,11 @@ class Controller(threading.Thread):
 			elif action.label != 'SHOT':
 				self.leftTotalSec += action.time
 
+	def _calc_elapsed_time(self):
+		elapsedTimeSec = (datetime.now() - self.startTime).total_seconds()
+		mins, secs = divmod(elapsedTimeSec, 60)
+		hours, mins = divmod(mins, 60)
+		return '%02d:%02d:%02d' % (hours, mins, secs)
 
 	def startPCR(self):
 		self.initValues()
@@ -248,6 +253,51 @@ class Controller(threading.Thread):
 			'serialNumber'			: self.serial_number
 		}
 
+	def fast_loop(self):
+		# Update tx buffer params
+		tx = self.txBuffer
+		tx.cmd 					= self.currentCommand
+		tx.currentTargetTemp 	= self.currentTargetTemp
+		
+		tx.startTemp  			= self.pid['start_temp']
+		tx.targetTemp 			= self.pid['target_temp']
+		tx.Kp 					= self.pid['Kp']
+		tx.Ki 					= self.pid['Ki']
+		tx.Kd 					= self.pid['Kd']
+
+		tx.ledControl			= True
+		tx.led_wg				= self.leds[0]
+		tx.led_r				= self.leds[1]
+		tx.led_g				= self.leds[2]
+		tx.led_b				= self.leds[3]
+
+		tx.led_wg_pwm			= self.leds_pwm[0]
+		tx.led_r_pwm			= self.leds_pwm[1]
+		tx.led_g_pwm			= self.leds_pwm[2]
+		tx.led_b_pwm			= self.leds_pwm[3]
+
+		tx.compensation 		= self.compensation
+		tx.currentCycle 		= self.currentCycle
+
+		# Write tx buffer (65 bytes)
+		self.device.write(tx.toBytes())
+
+		# Read received data buffer (64 bytes)
+		ReceivedDataBuffer = self.device.read(65)
+
+		# copy rx buffer
+		self.rxBuffer.setParams(ReceivedDataBuffer)
+
+		# Update rx buffer params
+		rx = self.rxBuffer
+		self.state  = rx.state
+		# self.chamber = rx.chamber 
+		self.currentTemp 	= rx.temperature
+		self.currentPhotodiode 	= rx.photodiode
+		self.requestData 	= rx.requestData
+		self.currentError 	= rx.currentError
+		self.targetArrival 	= rx.targetArrival
+
 	def run(self):
 		usbTimer = time.time()
 		roundTimer = time.time()
@@ -259,51 +309,8 @@ class Controller(threading.Thread):
 			if currentTime - usbTimer >= 0.05:
 				# reset the usb task timer 
 				usbTimer = time.time()
-
-				# Update tx buffer params
-				tx = self.txBuffer
-				tx.cmd 					= self.currentCommand
-				tx.currentTargetTemp 	= self.currentTargetTemp
+				self.fast_loop()
 				
-				tx.startTemp  			= self.pid['start_temp']
-				tx.targetTemp 			= self.pid['target_temp']
-				tx.Kp 					= self.pid['Kp']
-				tx.Ki 					= self.pid['Ki']
-				tx.Kd 					= self.pid['Kd']
-
-				tx.ledControl			= True
-				tx.led_wg				= self.leds[0]
-				tx.led_r				= self.leds[1]
-				tx.led_g				= self.leds[2]
-				tx.led_b				= self.leds[3]
-
-				tx.led_wg_pwm			= self.leds_pwm[0]
-				tx.led_r_pwm			= self.leds_pwm[1]
-				tx.led_g_pwm			= self.leds_pwm[2]
-				tx.led_b_pwm			= self.leds_pwm[3]
-
-				tx.compensation 		= self.compensation
-				tx.currentCycle 		= self.currentCycle
-
-				# Write tx buffer (65 bytes)
-				self.device.write(self.txBuffer.toBytes())
-
-                # Read received data buffer (64 bytes)
-				ReceivedDataBuffer = self.device.read(65)
-
-				# copy rx buffer
-				self.rxBuffer.setParams(ReceivedDataBuffer)
-
-				# Update rx buffer params
-				rx = self.rxBuffer
-				self.state  = rx.state
-				# self.chamber = rx.chamber 
-				self.currentTemp 	= rx.temperature
-				self.currentPhotodiode 	= rx.photodiode
-				self.requestData 	= rx.requestData
-				self.currentError 	= rx.currentError
-				self.targetArrival 	= rx.targetArrival
-
 			# Real-time PCR Task (100 millesecond timer)
 			if currentTime - roundTimer >= 1:
 				# reset the timer 
@@ -312,12 +319,9 @@ class Controller(threading.Thread):
 				self.currentPos = self.filter.get_pos()
 				self.currentSpeed = self.filter.get_speed()
 				self.currentAcc = self.filter.get_acc()
+
 				if self.running:
-					elapsedTimeSec = (datetime.now() - self.startTime).total_seconds()
-					mins, secs = divmod(elapsedTimeSec, 60)
-					hours, mins = divmod(mins, 60)
-					self.elapsedTime = '%02d:%02d:%02d' % (hours, mins, secs)	
-					# logger.info(f'Elapsed time : {self.elapsedTime}')
+					self.elapsedTime = self._calc_elapsed_time()
 
 					# ended current action
 					if self.leftSec <= 0:
