@@ -16,7 +16,6 @@ import json
 
 from api import util
 from UserDefs import State, Command, Action
-import magneto.command_handler.command_handler as magneto_command_handler
 
 # logger
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
