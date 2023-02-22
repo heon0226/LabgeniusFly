@@ -101,7 +101,7 @@ class TaskWorker(threading.Thread):
         for action in protocolData[2]:
             self.protocol.append(Action(**action))
         
-        self.magnetoProtocol = protocolData[3]
+        self.magnetoProtocol = list(filter(lambda x:x, protocolData[3]))
         
     # For getting the device status
     def run(self):
@@ -129,7 +129,7 @@ class TaskWorker(threading.Thread):
         self.completePCR = resp['completePCR']
         self.photodiodes = resp['photodiodes']
         self.serialNumber = resp['serialNumber']
-        logger.info(resp)
+        
         # For History
         if self.running:
             self.tempLogger.append(self.currentTemp)
@@ -218,7 +218,7 @@ class TaskWorker(threading.Thread):
         for action in protocolData[2]:
             self.protocol.append(Action(**action))
         
-        self.magnetoProtocol = protocolData[3]
+        self.magnetoProtocol = list(filter(lambda x:x, protocolData[3]))
 
     def _start(self):
         self.result = ['', '', '', '']
@@ -230,9 +230,6 @@ class TaskWorker(threading.Thread):
         self.magnetoRunning = True
         self.currentCommand = Command.MAGNETO
     
-    def stopMagneto(self):
-        pass
-
     def startPCR(self):
         # for history
         self.result = ['', '', '', '']
@@ -245,12 +242,27 @@ class TaskWorker(threading.Thread):
 
         self.pcrClient.send_json(message)
         response = self.pcrClient.recv_json()
+    
+    def stopMagneto(self):
+        self.currentCommand = Command.READY
+        self.magnetoRunning = False
 
     def stopPCR(self):
         self.pcrClient.send_json({ 'command' : 'stop' })
         response = self.pcrClient.recv_json()
         logger.info('Stop Response', response)
         pass
+    
+    def _stop(self):
+        if not self.running:
+            return False
+        
+        if self.currentCommand == Command.MAGNETO:
+            self.stopMagneto()
+        elif self.currentCommand == Command.PCR_RUN:
+            self.stopPCR()
+
+        return False
 
     def getStatus(self):
         filters = []
@@ -266,7 +278,7 @@ class TaskWorker(threading.Thread):
                 filterNames.append('')
                 filterCts.append('')
         return {
-            'running' : self.running,
+            'running' : self.isRunning(),
             'command' : self.currentCommand,
             'temperature' : round(self.currentTemp, 2),
             'state' : self.state,
