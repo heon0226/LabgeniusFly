@@ -172,7 +172,7 @@ def convertToProtocol(protocolLines):
 			result.append({"label":"SHOT", "temp":0.0, "time":0})
 		else:
 			data = line.split("\t")
-			result.append({"label":"%s" % data[0], "temp":"%.1f" % float(data[1]), "time":"%d" % int(data[2])})
+			result.append({"label":"%s" % data[0], "temp": int(data[1]), "time": int(data[2])})
 
 	# magneto protocol
 	magnetoProtocol = protocolLines[index+1:]
