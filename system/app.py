@@ -30,6 +30,7 @@ if __name__ == '__main__':\
     app.register_blueprint(bp.bp_task, url_prefix='/api/task')
     app.register_blueprint(bp.bp_protocol, url_prefix='/api/protocol')
     app.register_blueprint(bp.bp_history, url_prefix='/api/history')
+    app.register_blueprint(bp.bp_magneto, url_prefix='/api/magneto')
 
     # Magneto API
     # app.run(host=util.getIpAddress(), port=6009, debug=True, use_reloader=False)

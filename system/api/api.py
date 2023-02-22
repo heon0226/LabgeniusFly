@@ -7,11 +7,15 @@ from flask_restful import Api
 from api.task import task
 from api.protocol import protocol 
 from api.history import history as pcrHistory
+from api.magneto import magneto
+
 
 # list of PCR api
 bp_task = Blueprint('api_task', __name__)
 bp_protocol = Blueprint('api_protocol', __name__)
 bp_history = Blueprint('api_history', __name__)
+bp_magneto = Blueprint('api_magneto', __name__)
+
 
 # For PCR API
 api_task = Api(bp_task)
@@ -35,3 +39,7 @@ api_history = Api(bp_history)
 api_history.add_resource(pcrHistory.HistoryList, '/list')
 api_history.add_resource(pcrHistory.HistoryGraphData, '/graphdata')
 api_history.add_resource(pcrHistory.HistoryTempData, '/tempdata')
+
+# For magneto API
+api_magneto = Api(bp_magneto)
+api_magneto.add_resource(magneto.Run, '/run')
