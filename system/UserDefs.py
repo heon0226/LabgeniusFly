@@ -3,16 +3,21 @@ from struct import pack, unpack
 from dataclasses import dataclass
 
 class State(IntEnum):
-    READY = 0x00,
-    RUNNING = 0x01,
+    READY       = 0x00,
+    RUNNING     = 0x01,
 
 class Command(IntEnum):
-    READY = 0x00,
-    PCR_RUN = 0x01,
-    PCR_STOP = 0x02,
-    FAN_ON = 0x03,
-    FAN_OFF = 0x04,
-    MAGNETO = 0x05,
+    READY       = 0x00,
+    PCR_RUN     = 0x01,
+    PCR_STOP    = 0x02,
+    FAN_ON      = 0x03,
+    FAN_OFF     = 0x04,
+    MAGNETO     = 0x05,
+
+class Error(IntEnum):
+    ERROR_NO       = 0x00,
+    ERROR_ASSERT   = 0x01
+    ERROR_OVERHEAT = 0x02
 
 @dataclass
 class Action:
@@ -53,8 +58,6 @@ class TxBuffer:
             self.__dict__[key] = val
 
     def toBytes(self):
-        pid = pack('fff', self.Kp, self.Ki, self.Kd)
-        integralMax = pack('f', self.integralMax)
         buffer = [0] # reserved 
         buffer += [self.cmd, int(self.currentTargetTemp),
                   int(self.startTemp), int(self.targetTemp),
@@ -64,9 +67,11 @@ class TxBuffer:
                   self.led_wg_pwm, self.led_r_pwm, self.led_g_pwm, self.led_b_pwm,
                   self.currentCycle]
 
-        buffer += [0] * 33 # 31 ~ 64 reserved
+        buffer += [0] * 32 # 31 ~ 64 reserved
+        
         # total 65 bytes
-        return pack('>5B4f44B', *buffer)
+        return pack('<5B4f43B', *buffer)
+        # return bytes(buffer)
 class RxBuffer:
     def __init__(self):
         self.state = State.READY
