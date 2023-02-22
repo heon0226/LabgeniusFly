@@ -129,7 +129,7 @@ class TaskWorker(threading.Thread):
         self.completePCR = resp['completePCR']
         self.photodiodes = resp['photodiodes']
         self.serialNumber = resp['serialNumber']
-        
+        logger.info(resp)
         # For History
         if self.running:
             self.tempLogger.append(self.currentTemp)
