@@ -93,15 +93,19 @@ class Controller(threading.Thread):
 		self.photodiodes = [[], [], [], []]		# photodiodes values to List
 
 		# for filter 
+		logger.info('Initialize Filter')
 		self.i2c = smbus.SMBus(1)
 		time.sleep(1)
 		self.i2c_address = (0b0101000 | 0b010) # JP8 on HAT board
 		self.spi = L6470Sc18is602bInterface(self.i2c, self.i2c_address)
 		self.filter = Filter(self.spi)
 
-		self.filter.go_home() # Go Home
+		logger.info('Filter Homing start...')
+		self.filter.release_switch() # release switch
+		self.filter.go_until() # Go Home
 		while self.filter.wait(): # Wait Go to Home
 			time.sleep(0.01)
+		logger.info('Filter Homing done.')
 
 		self.positions = [0.0, 90.0, 180.0, 270.0]
 		self.shotCounter = 0
@@ -170,6 +174,13 @@ class Controller(threading.Thread):
 		self.leds_pwm = [0] * 4					# leds pwm param
 		# self.leds_pwm = [255] * 4		
 
+		logger.info('Filter Homing start...')
+		self.filter.release_switch() # release switch
+		self.filter.go_until() # Go Home
+		while self.filter.wait(): # Wait Go to Home
+			time.sleep(0.01)
+		logger.info('Filter Homing done.')
+		
 		self.calcLeftTime()
 	
 	def processCleanpPCR(self):
