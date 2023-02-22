@@ -180,7 +180,6 @@ class Controller(threading.Thread):
 		while self.filter.wait(): # Wait Go to Home
 			time.sleep(0.01)
 		logger.info('Filter Homing done.')
-		
 		self.calcLeftTime()
 	
 	def processCleanpPCR(self):

@@ -55,9 +55,14 @@ class TaskWorker(threading.Thread):
 
         # PCR ZMQ Socket initialize 
         self.context = zmq.Context()
+        
         self.pcrClient = self.context.socket(zmq.REQ)
         self.pcrClient.connect('tcp://localhost:%s' % PCR_PORT)
         self.pcrMessage = { 'command' : 'none' }
+
+        self.magnetoClient = self.context.socket(zmq.REQ)
+        self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
+        self.magnetoMessage = { 'command' : 'get_status'}
 
         # self.magnetoClient = self.context.socket(zmq.REQ)
         # self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
@@ -84,7 +89,7 @@ class TaskWorker(threading.Thread):
         # Magneto Params
         self.magnetoIndex = -1
         self.magnetoCounter = 0
-        self.magnetoRunning = False
+        self.magnetoWait = False
 
         # Protocol
         self.protocol = []
@@ -110,10 +115,23 @@ class TaskWorker(threading.Thread):
             currentTime = time.time()
             if currentTime - roundTimer >= 0.5: # 500ms timer
                 roundTimer = time.time()
-                self.run_magneto_protocol()
-                
+                self._update_magneto_data()
                 self._update_pcr_data()
 
+    def _update_magneto_data(self):
+        self.magnetoClient.send_json({})
+        resp = self.magnetoClient.recv_json()
+
+        if not resp['result']:
+            return False, resp['reason']
+
+        self.magnetoWait = resp['data']['running']
+        if self.currentCommand == Command.MAGNETO:
+            self.stateString = resp['data']['runningCommand']
+
+            if not self.magnetoWait['running']:
+                self._finish_magneto_protocol()
+    
     def _update_pcr_data(self):
         # Update Status
         self.pcrClient.send_json({})
@@ -134,40 +152,6 @@ class TaskWorker(threading.Thread):
         if self.running:
             self.tempLogger.append(self.currentTemp)
 
-    def run_magneto_protocol(self):
-        if self.currentCommand == Command.MAGNETO:
-            if len(self.magnetoProtocol) <= 0:
-                self._finish_magneto_protocol()
-                return 
-            
-            if self.magnetoIndex == -1:
-                self.magnetoIndex = 0
-                cmd = self.magnetoProtocol[self.magnetoIndex]
-                if len(cmd) != 0:
-                    magneto_command_handler.start_command(cmd)
-                    self.stateString = self._get_magneto_state()
-                return
-            
-            cmd = self.magnetoProtocol[self.magnetoIndex]
-            if len(cmd) != 0:
-                if magneto_command_handler.wait_command(cmd):
-                    self.stateString = self._get_magneto_state()
-                    return 
-            self.magnetoIndex += 1
-
-            # Magneto Protocol is finished
-            if self.magnetoIndex >= len(self.magnetoProtocol):
-                self.running = True
-                self.magnetoRunning = False
-
-                self._finish_magneto_protocol()
-            cmd = self.magnetoProtocol[self.magnetoIndex]
-            if len(cmd) != 0:
-                magneto_command_handler.start_command(cmd)
-            logger.info(f'index : {self.magnetoIndex}, cmd : {cmd}')
-            self.stateString = self._get_magneto_state()
-            print(f'start_command{cmd}')
-
     def _finish_magneto_protocol(self):
         self.running = True
         self.magnetoRunning = False
@@ -182,14 +166,6 @@ class TaskWorker(threading.Thread):
         self.pcrClient.send_json(message)
         response = self.pcrClient.recv_json()
     
-    def _get_magneto_state(self):
-        print_message = magneto_command_handler.get_print_message()
-        line_no = self.magnetoIndex + 1
-        total_lines = len(self.magnetoProtocol)
-        cmd = self.magnetoProtocol[self.magnetoIndex]
-        dir = magneto_command_handler.dir_command(cmd)
-        return f'{print_message} ({line_no}/{total_lines}, {dir})'
-
     def initValues(self):
         self.running = False
         self.currentCommand = Command.READY
@@ -246,12 +222,15 @@ class TaskWorker(threading.Thread):
     def stopMagneto(self):
         self.currentCommand = Command.READY
         self.magnetoRunning = False
+        self.magnetoClient.send_json({ 'command' : 'stop' })
+        response = self.magnetoClient.recv_json()
+        logger.info('Stop Response', response)
+
 
     def stopPCR(self):
         self.pcrClient.send_json({ 'command' : 'stop' })
         response = self.pcrClient.recv_json()
         logger.info('Stop Response', response)
-        pass
     
     def _stop(self):
         if not self.running:
