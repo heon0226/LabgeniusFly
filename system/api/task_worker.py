@@ -88,6 +88,7 @@ class TaskWorker(threading.Thread):
         # Magneto Params
         self.magnetoIndex = -1
         self.magnetoCounter = 0
+        self.magnetoRunning = False
         self.magnetoWait = False
 
         # Protocol
