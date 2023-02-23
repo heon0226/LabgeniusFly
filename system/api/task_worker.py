@@ -23,8 +23,8 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Setting the file logger for PCR task
-fileHandler = logging.FileHandler("pcr.log")
-logger.addHandler(fileHandler)
+# fileHandler = logging.FileHandler("pcr.log")
+# logger.addHandler(fileHandler)
 
 logger.info("Logger started!")
 
