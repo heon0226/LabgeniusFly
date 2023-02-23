@@ -57,13 +57,14 @@ class TaskWorker(threading.Thread):
         self.context = zmq.Context()
         self.pcrClient = self.context.socket(zmq.REQ)
         self.pcrClient.connect('tcp://127.0.0.1:%s' % PCR_PORT)
-        self.pcrMessage = { 'command' : 'none' }
 
         self.magnetoClient = self.context.socket(zmq.REQ)
         self.magnetoClient.connect('tcp://127.0.0.1:%s' % MAGNETO_PORT)
 
         self.running = False
         self.currentCommand = Command.READY
+        self.pcrCommand = {}
+        self.magnetoCommand = ''
         
         self.state = State.READY
         self.stateString = 'idle'
@@ -85,6 +86,7 @@ class TaskWorker(threading.Thread):
         self.magnetoIndex = -1
         self.magnetoCounter = 0
         self.magnetoRunning = False
+        self.magnetoWait = False
 
         # Protocol
         self.protocol = []
@@ -101,94 +103,7 @@ class TaskWorker(threading.Thread):
         for action in protocolData[2]:
             self.protocol.append(Action(**action))
         
-        self.magnetoProtocol = protocolData[3]
-        
-    # For getting the device status
-    def run(self):
-        roundTimer = time.time()
-        while True:
-            currentTime = time.time()
-            if currentTime - roundTimer >= 0.5: # 500ms timer
-                roundTimer = time.time()
-                self.run_magneto_protocol()
-                
-                self._update_pcr_data()
-
-    def _update_pcr_data(self):
-        # Update Status
-        self.pcrClient.send_json({})
-        resp = self.pcrClient.recv_json()
-
-        self.state = resp['state']
-        self.running = resp['running']
-        self.currentTemp = resp['temperature']
-        self.remainingTotalSec = resp['remainingTotalSec']
-        self.remainingGotoCount = resp['remainingGotoCount']
-        self.currentActionNumber = resp['currentActionNumber']
-        self.totalActionNumber = resp['totalActionNumber']
-        self.completePCR = resp['completePCR']
-        self.photodiodes = resp['photodiodes']
-        self.serialNumber = resp['serialNumber']
-        
-        # For History
-        if self.running:
-            self.tempLogger.append(self.currentTemp)
-
-    def run_magneto_protocol(self):
-        if self.currentCommand == Command.MAGNETO:
-            if len(self.magnetoProtocol) <= 0:
-                self._finish_magneto_protocol()
-                return 
-            
-            if self.magnetoIndex == -1:
-                self.magnetoIndex = 0
-                cmd = self.magnetoProtocol[self.magnetoIndex]
-                if len(cmd) != 0:
-                    magneto_command_handler.start_command(cmd)
-                    self.stateString = self._get_magneto_state()
-                return
-            
-            cmd = self.magnetoProtocol[self.magnetoIndex]
-            if len(cmd) != 0:
-                if magneto_command_handler.wait_command(cmd):
-                    self.stateString = self._get_magneto_state()
-                    return 
-            self.magnetoIndex += 1
-
-            # Magneto Protocol is finished
-            if self.magnetoIndex >= len(self.magnetoProtocol):
-                self.running = True
-                self.magnetoRunning = False
-
-                self._finish_magneto_protocol()
-            cmd = self.magnetoProtocol[self.magnetoIndex]
-            if len(cmd) != 0:
-                magneto_command_handler.start_command(cmd)
-            logger.info(f'index : {self.magnetoIndex}, cmd : {cmd}')
-            self.stateString = self._get_magneto_state()
-            print(f'start_command{cmd}')
-
-    def _finish_magneto_protocol(self):
-        self.running = True
-        self.magnetoRunning = False
-        self.currentCommand = Command.PCR_RUN
-        self.startTime = datetime.datetime.now()
-        self.stateString = 'PCR in progress'
-
-        protocol = list(map(lambda x : x.__dict__, self.protocol))
-        protocolData = [self.protocolName, self.filters, protocol]
-        message = { 'command' : 'start', 'protocolData' : protocolData }
-
-        self.pcrClient.send_json(message)
-        response = self.pcrClient.recv_json()
-    
-    def _get_magneto_state(self):
-        print_message = magneto_command_handler.get_print_message()
-        line_no = self.magnetoIndex + 1
-        total_lines = len(self.magnetoProtocol)
-        cmd = self.magnetoProtocol[self.magnetoIndex]
-        dir = magneto_command_handler.dir_command(cmd)
-        return f'{print_message} ({line_no}/{total_lines}, {dir})'
+        self.magnetoProtocol = list(filter(lambda x:x, protocolData[3]))
 
     def initValues(self):
         self.running = False
@@ -196,7 +111,6 @@ class TaskWorker(threading.Thread):
         
         self.state = State.READY
         self.stateString = 'idle'
-        self.serialNumber = ''
 
         # Magneto Params
         self.magnetoIndex = -1
@@ -218,39 +132,126 @@ class TaskWorker(threading.Thread):
         for action in protocolData[2]:
             self.protocol.append(Action(**action))
         
-        self.magnetoProtocol = protocolData[3]
+        self.magnetoProtocol = list(filter(lambda x:x, protocolData[3]))
+        
+    # For getting the device status
+    def run(self):
+        roundTimer = time.time()
+        while True:
+            currentTime = time.time()
+            if currentTime - roundTimer >= 0.5: # 500ms timer
+                roundTimer = time.time()
+                completeMagneto = self._update_magneto_data()
+                
+                completePCR = self._update_pcr_data()
+                
+                # check magneto protocol is done.
+                if completeMagneto:
+                    logger.info('magneto protocol is done...')
+                    self._finish_magneto_protocol()
+                
+                # check pcr protocol is done
+                if completePCR:
+                    logger.info('Protocol is Done...')
+                    self._finish_pcr_protocol()
+                    
+    # xfer magneto controller, return magneto protocol is done.
+    def _update_magneto_data(self) -> bool:
+        command = self.magnetoCommand
+        self.magnetoClient.send_string(command)
+        resp = self.magnetoClient.recv_json()
+
+        if not resp['result']:
+            logger.info(f"error : {resp['reason']}")
+            return False
+
+        if len(command) == 0:
+            self.magnetoWait = resp['data']['running']
+            if self.currentCommand == Command.MAGNETO:
+                self.stateString = resp['data']['runningCommand']
+                return not self.magnetoWait
+        else:
+            self.magnetoCommand = ''
+        return False
+    
+    # xfer pcr controller, return pcr protocol is done.
+    def _update_pcr_data(self) -> bool:
+        # Update Status
+        command = self.pcrCommand
+        self.pcrClient.send_json(command)
+        resp = self.pcrClient.recv_json()
+
+        if len(command) != 0:
+            self.pcrCommand.clear()
+            return False
+
+        completePCR = self.completePCR
+
+        self.state = resp['state']
+        self.running = resp['running']
+        self.currentTemp = resp['temperature']
+        self.remainingTotalSec = resp['remainingTotalSec']
+        self.remainingGotoCount = resp['remainingGotoCount']
+        self.currentActionNumber = resp['currentActionNumber']
+        self.totalActionNumber = resp['totalActionNumber']
+        self.completePCR = resp['completePCR']
+        self.photodiodes = resp['photodiodes']
+        self.serialNumber = resp['serialNumber']
+        
+        # For History
+        if self.running:
+            self.tempLogger.append(self.currentTemp)
+        
+        # check protocol is ended
+        return self.completePCR and not completePCR
+            
+    def _finish_magneto_protocol(self):
+        self.running = True
+        self.magnetoRunning = False
+        self.currentCommand = Command.PCR_RUN
+        self.startTime = datetime.datetime.now()
+        self.stateString = 'PCR in progress'
+
+        protocol = list(map(lambda x : x.__dict__, self.protocol))
+        protocolData = [self.protocolName, self.filters, protocol]
+        self.pcrCommand = { 'command' : 'start', 'protocolData' : protocolData }
 
     def _start(self):
         self.result = ['', '', '', '']
         self.resultCts = ['', '', '', '']
         self.photodiodes = [[], [], [], []]
         self.startMagneto()
+    
+    def _stop(self):
+        if not self.isRunning():
+            return False
+        elif self.currentCommand == Command.MAGNETO:
+            self.stopMagneto()
+        elif self.currentCommand == Command.PCR_RUN:
+            self.stopPCR()
+        return True
 
     def startMagneto(self):
         self.magnetoRunning = True
         self.currentCommand = Command.MAGNETO
+        self.magnetoCommand = 'protocol_run ' + '\n'.join(self.magnetoProtocol)
     
     def stopMagneto(self):
-        pass
+        self.magnetoRunning = False
+        self.currentCommand = Command.READY
+        self.magnetoCommand = 'stop'
 
     def startPCR(self):
         # for history
         self.result = ['', '', '', '']
         self.resultCts = ['', '', '', '']
 
-        self.pcrMessage['command'] = 'start'
         protocol = list(map(lambda x : x.__dict__, self.protocol))
         protocolData = [self.protocolName, self.filters, protocol]
-        message = { 'command' : 'start', 'protocolData' : protocolData }
-
-        self.pcrClient.send_json(message)
-        response = self.pcrClient.recv_json()
+        self.pcrCommand = { 'command' : 'start', 'protocolData' : protocolData }
 
     def stopPCR(self):
-        self.pcrClient.send_json({ 'command' : 'stop' })
-        response = self.pcrClient.recv_json()
-        logger.info('Stop Response', response)
-        pass
+        self.pcrCommand = { 'command' : 'stop' }
 
     def getStatus(self):
         filters = []
@@ -289,7 +290,7 @@ class TaskWorker(threading.Thread):
 
     # internal protocol
     def reloadProtocol(self):
-        if self.running or self.magnetoRunning:
+        if self.isRunning():
             return False
 
         # reload the protocol
@@ -331,7 +332,7 @@ class TaskWorker(threading.Thread):
         self.result[index] = resultText
         self.resultCts[index] = round(cq, 2)
 
-    def processCleanupPCR(self):
+    def _finish_pcr_protocol(self):
         if self.state == State.READY:
             self.stateString = 'idle'
         filterData = []
