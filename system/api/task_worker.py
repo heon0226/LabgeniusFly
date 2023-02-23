@@ -267,7 +267,7 @@ class TaskWorker(threading.Thread):
                 filterNames.append('')
                 filterCts.append('')
         return {
-            'running' : self.running,
+            'running' : self.isRunning(),
             'command' : self.currentCommand,
             'temperature' : round(self.currentTemp, 2),
             'state' : self.state,

@@ -59,7 +59,7 @@ class Stop(Resource):
 		task_worker = TaskWorker.instance()
 
 		if task_worker.isRunning():
-			task_worker.stopPCR()
+			task_worker._stop()
 			response = {
 				'result' : 'ok'
 			}
@@ -77,7 +77,7 @@ class Stop(Resource):
 		task_worker = TaskWorker.instance()
 		
 		if task_worker.isRunning():
-			task_worker.stopPCR()
+			task_worker._stop()
 			response = {
 				'result' : 'ok'
 			}
