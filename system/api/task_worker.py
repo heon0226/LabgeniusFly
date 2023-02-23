@@ -150,6 +150,8 @@ class TaskWorker(threading.Thread):
             self.pcrCommand.clear()
             return 
         
+        completePCR = self.completePCR
+
         self.state = resp['state']
         self.running = resp['running']
         self.currentTemp = resp['temperature']
@@ -165,6 +167,10 @@ class TaskWorker(threading.Thread):
         if self.running:
             self.tempLogger.append(self.currentTemp)
 
+        # check protocol is ended
+        if self.completePCR and not completePCR:
+            logger.info('Protocol is Done...')
+            self.processCleanupPCR()
     def _finish_magneto_protocol(self):
         self.running = True
         self.magnetoRunning = False
@@ -332,10 +338,14 @@ class TaskWorker(threading.Thread):
         self.resultCts[index] = round(cq, 2)
 
     def processCleanupPCR(self):
+        self.tempLogger = []
+
         if self.state == State.READY:
             self.stateString = 'idle'
+        
         filterData = []
         filterNames = []
+        
         for index, key in enumerate(self.filters):
             if self.filters[key]['use']:
                 filterData.append(key)
