@@ -67,7 +67,9 @@ class TaskWorker(threading.Thread):
 
         self.running = False
         self.currentCommand = Command.READY
-        
+        self.magnetoCommand = ''
+        self.pcrCommand = {}
+
         self.state = State.READY
         self.stateString = 'idle'
 
@@ -89,7 +91,6 @@ class TaskWorker(threading.Thread):
         self.magnetoCounter = 0
         self.magnetoRunning = False
         self.magnetoWait = False
-        self.magnetoCommand = ''
 
         # Protocol
         self.protocol = []
@@ -127,11 +128,13 @@ class TaskWorker(threading.Thread):
             return False, resp['reason']
 
         if len(command) == 0:
+            logger.info(f'get_status {resp}')
             self.magnetoWait = resp['data']['running']
             if self.currentCommand == Command.MAGNETO:
                 self.stateString = resp['data']['runningCommand']
 
                 if not self.magnetoWait['running']:
+                    logger.info('magneto done...')
                     self._finish_magneto_protocol()
         else:
             self.magnetoCommand = ''
@@ -139,9 +142,13 @@ class TaskWorker(threading.Thread):
         return True, ''
     def _update_pcr_data(self):
         # Update Status
-        self.pcrClient.send_json({})
+        self.pcrClient.send_json(self.pcrCommand)
         resp = self.pcrClient.recv_json()
 
+        if len(self.pcrCommand) != 0:
+            self.pcrCommand.clear()
+            return 
+        
         self.state = resp['state']
         self.running = resp['running']
         self.currentTemp = resp['temperature']
@@ -166,10 +173,10 @@ class TaskWorker(threading.Thread):
 
         protocol = list(map(lambda x : x.__dict__, self.protocol))
         protocolData = [self.protocolName, self.filters, protocol]
-        message = { 'command' : 'start', 'protocolData' : protocolData }
+        self.pcrCommand = { 'command' : 'start', 'protocolData' : protocolData }
 
-        self.pcrClient.send_json(message)
-        response = self.pcrClient.recv_json()
+        # self.pcrClient.send_json(message)
+        # response = self.pcrClient.recv_json()
     
     def initValues(self):
         self.running = False
