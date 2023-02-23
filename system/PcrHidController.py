@@ -433,7 +433,6 @@ listener = context.socket(zmq.REP)
 listener.bind(f'tcp://*:{PCR_PORT}')
 
 def command_handler(recv_data):
-	return controller.getStatus()
 	# Information
 	if len(recv_data) == 0:
 		return controller.getStatus()
