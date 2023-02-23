@@ -56,12 +56,11 @@ class TaskWorker(threading.Thread):
         self.context = zmq.Context()
         
         self.pcrClient = self.context.socket(zmq.REQ)
-        self.pcrClient.connect('tcp://localhost:%s' % PCR_PORT)
+        self.pcrClient.connect('tcp://127.0.0.1:%s' % PCR_PORT)
         self.pcrMessage = { 'command' : 'none' }
 
         self.magnetoClient = self.context.socket(zmq.REQ)
-        self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
-        self.magnetoMessage = { 'command' : 'get_status'}
+        self.magnetoClient.connect('tcp://127.0.0.1:%s' % MAGNETO_PORT)
 
         # self.magnetoClient = self.context.socket(zmq.REQ)
         # self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
@@ -90,6 +89,7 @@ class TaskWorker(threading.Thread):
         self.magnetoCounter = 0
         self.magnetoRunning = False
         self.magnetoWait = False
+        self.magnetoCommand = ''
 
         # Protocol
         self.protocol = []
@@ -119,19 +119,24 @@ class TaskWorker(threading.Thread):
                 self._update_pcr_data()
 
     def _update_magneto_data(self):
-        self.magnetoClient.send_json({})
+        command = self.magnetoCommand
+        self.magnetoClient.send_string(command)
         resp = self.magnetoClient.recv_json()
-
-        if not resp['result']:
+        
+        if resp['result'] != 'ok':
             return False, resp['reason']
 
-        self.magnetoWait = resp['data']['running']
-        if self.currentCommand == Command.MAGNETO:
-            self.stateString = resp['data']['runningCommand']
+        if len(command) == 0:
+            self.magnetoWait = resp['data']['running']
+            if self.currentCommand == Command.MAGNETO:
+                self.stateString = resp['data']['runningCommand']
 
-            if not self.magnetoWait['running']:
-                self._finish_magneto_protocol()
-    
+                if not self.magnetoWait['running']:
+                    self._finish_magneto_protocol()
+        else:
+            self.magnetoCommand = ''
+
+        return True, ''
     def _update_pcr_data(self):
         # Update Status
         self.pcrClient.send_json({})
@@ -205,6 +210,7 @@ class TaskWorker(threading.Thread):
     def startMagneto(self):
         self.magnetoRunning = True
         self.currentCommand = Command.MAGNETO
+        self.magnetoCommand = 'protocol_run ' + '\n'.join(self.magnetoProtocol)
     
     def startPCR(self):
         # for history
@@ -222,7 +228,7 @@ class TaskWorker(threading.Thread):
     def stopMagneto(self):
         self.currentCommand = Command.READY
         self.magnetoRunning = False
-        self.magnetoClient.send_json({ 'command' : 'stop' })
+        self.magnetoClient.send_string('stop')
         response = self.magnetoClient.recv_json()
         logger.info('Stop Response', response)
 

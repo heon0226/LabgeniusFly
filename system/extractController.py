@@ -18,16 +18,16 @@ magneto_task.start()
 
 while True:
     try:
-        recv_data = listener.recv_json()
+        command = listener.recv_string()
     except Exception as e:
         logger.error(e)
         continue  
 
-    command = 'get_status'
-    if len(recv_data) != 0:
-        command = recv_data['command']
-    
-    result, reason, data = magneto_task.run_command(recv_data)
+    if len(command) == 0:
+        command = 'get_status'
+
+    logger.info(command)
+    result, reason, data = magneto_task.run_command(command)
 
     listener.send_json({ 'result' : result , 'reason' : reason, 'data' : data })
 
