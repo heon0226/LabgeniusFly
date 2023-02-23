@@ -56,11 +56,11 @@ class TaskWorker(threading.Thread):
         # PCR ZMQ Socket initialize 
         self.context = zmq.Context()
         self.pcrClient = self.context.socket(zmq.REQ)
-        self.pcrClient.connect('tcp://localhost:%s' % PCR_PORT)
+        self.pcrClient.connect('tcp://127.0.0.1:%s' % PCR_PORT)
         self.pcrMessage = { 'command' : 'none' }
 
-        # self.magnetoClient = self.context.socket(zmq.REQ)
-        # self.magnetoClient.connect('tcp://localhost:%s' % MAGNETO_PORT)
+        self.magnetoClient = self.context.socket(zmq.REQ)
+        self.magnetoClient.connect('tcp://127.0.0.1:%s' % MAGNETO_PORT)
 
         self.running = False
         self.currentCommand = Command.READY
