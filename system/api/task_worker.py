@@ -22,8 +22,8 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Setting the file logger for PCR task
-fileHandler = logging.FileHandler("pcr.log")
-logger.addHandler(fileHandler)
+# fileHandler = logging.FileHandler("pcr.log")
+# logger.addHandler(fileHandler)
 
 logger.info("Logger started!")
 
@@ -124,11 +124,11 @@ class TaskWorker(threading.Thread):
         self.magnetoClient.send_string(command)
         resp = self.magnetoClient.recv_json()
         
-        if resp['result'] != 'ok':
+        if not resp['result']:
             return False, resp['reason']
-
+        
+        logger.info(f'get_status {resp}')
         if len(command) == 0:
-            logger.info(f'get_status {resp}')
             self.magnetoWait = resp['data']['running']
             if self.currentCommand == Command.MAGNETO:
                 self.stateString = resp['data']['runningCommand']
@@ -142,10 +142,11 @@ class TaskWorker(threading.Thread):
         return True, ''
     def _update_pcr_data(self):
         # Update Status
-        self.pcrClient.send_json(self.pcrCommand)
+        command = self.pcrCommand
+        self.pcrClient.send_json(command)
         resp = self.pcrClient.recv_json()
 
-        if len(self.pcrCommand) != 0:
+        if len(command) != 0:
             self.pcrCommand.clear()
             return 
         
@@ -227,23 +228,18 @@ class TaskWorker(threading.Thread):
         self.pcrMessage['command'] = 'start'
         protocol = list(map(lambda x : x.__dict__, self.protocol))
         protocolData = [self.protocolName, self.filters, protocol]
-        message = { 'command' : 'start', 'protocolData' : protocolData }
+        self.pcrCommand = { 'command' : 'start', 'protocolData' : protocolData }
 
-        self.pcrClient.send_json(message)
-        response = self.pcrClient.recv_json()
+        # self.pcrClient.send_json(message)
+        # response = self.pcrClient.recv_json()
     
     def stopMagneto(self):
         self.currentCommand = Command.READY
         self.magnetoRunning = False
-        self.magnetoClient.send_string('stop')
-        response = self.magnetoClient.recv_json()
-        logger.info('Stop Response', response)
-
+        self.magnetoCommand = 'stop'
 
     def stopPCR(self):
-        self.pcrClient.send_json({ 'command' : 'stop' })
-        response = self.pcrClient.recv_json()
-        logger.info('Stop Response', response)
+        self.pcrCommand = { 'command' : 'stop'}
     
     def _stop(self):
         if not self.running:

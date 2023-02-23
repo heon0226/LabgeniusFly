@@ -26,7 +26,7 @@ while True:
     if len(command) == 0:
         command = 'get_status'
 
-    logger.info(command)
+    print(command)
     result, reason, data = magneto_task.run_command(command)
 
     listener.send_json({ 'result' : result , 'reason' : reason, 'data' : data })
