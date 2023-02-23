@@ -133,7 +133,7 @@ class TaskWorker(threading.Thread):
             if self.currentCommand == Command.MAGNETO:
                 self.stateString = resp['data']['runningCommand']
 
-                if not self.magnetoWait['running']:
+                if not self.magnetoWait:
                     logger.info('magneto done...')
                     self._finish_magneto_protocol()
         else:
